@@ -218,5 +218,13 @@ void setup()
 
 void loop()
 {
-    setState(0, 1.0);
+    for (int cycle = 0; cycle < 5; ++cycle) // Repeat 5 times
+    {
+        setState(0, 1.0); // Turn on the air
+        delay(5000);      // Wait for 5 seconds (5000 milliseconds)
+
+        setState(0, 0.0); // Turn off the air
+        delay(3000);      // Wait for 3 seconds (3000 milliseconds)
+    }
 }
+
