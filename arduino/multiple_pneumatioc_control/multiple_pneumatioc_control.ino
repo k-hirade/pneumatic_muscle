@@ -25,206 +25,222 @@ bool get_MISO(void) { return false; } // dummy
 void wait_SPI(void) {}
 void chipSelect1(bool value)
 {
-    setCS1(!value);
-    wait_SPI();
-    wait_SPI();
+  setCS1(!value);
+  wait_SPI();
+  wait_SPI();
 }
 void chipSelect2(bool value)
 {
-    setCS2(!value);
-    wait_SPI();
-    wait_SPI();
+  setCS2(!value);
+  wait_SPI();
+  wait_SPI();
 }
 unsigned char transmit8bit(unsigned char output_data)
 {
-    unsigned char input_data = 0;
-    int i;
-    for (i = 7; i >= 0; i--)
-    {
-        // MOSI - Master : write with down trigger
-        //        Slave  : read with up trigger
-        // MISO - Master : read before down trigger
-        //        Slave  : write after down trigger
-        set_SCLK(!clock_edge);
-        set_MOSI((bool)((output_data >> i) & 0x01));
-        input_data <<= 1;
-        wait_SPI();
-        set_SCLK(clock_edge);
-        input_data |= get_MISO() & 0x01;
-        wait_SPI();
-    }
-    return input_data;
+  unsigned char input_data = 0;
+  int i;
+  for (i = 7; i >= 0; i--)
+  {
+    // MOSI - Master : write with down trigger
+    //        Slave  : read with up trigger
+    // MISO - Master : read before down trigger
+    //        Slave  : write after down trigger
+    set_SCLK(!clock_edge);
+    set_MOSI((bool)((output_data >> i) & 0x01));
+    input_data <<= 1;
+    wait_SPI();
+    set_SCLK(clock_edge);
+    input_data |= get_MISO() & 0x01;
+    wait_SPI();
+  }
+  return input_data;
 }
 
 unsigned short transmit16bit(unsigned short output_data)
 {
-    unsigned char input_data_H, input_data_L;
-    unsigned short input_data;
-    input_data_H = transmit8bit((unsigned char)(output_data >> 8));
-    input_data_L = transmit8bit((unsigned char)(output_data));
-    input_data = (((unsigned short)input_data_H << 8) & 0xff00) | (unsigned short)input_data_L;
-    return input_data;
+  unsigned char input_data_H, input_data_L;
+  unsigned short input_data;
+  input_data_H = transmit8bit((unsigned char)(output_data >> 8));
+  input_data_L = transmit8bit((unsigned char)(output_data));
+  input_data = (((unsigned short)input_data_H << 8) & 0xff00) | (unsigned short)input_data_L;
+  return input_data;
 }
 
 void setDARegister(unsigned char ch, unsigned short dac_data)
 {
-    unsigned short register_data;
+  unsigned short register_data;
 
-    if (ch < 8)
-    {
-        register_data = (((unsigned short)ch << 12) & 0x7000) | (dac_data & 0x0fff);
-        chipSelect1(true);
-        transmit16bit(register_data);
-        chipSelect1(false);
-    }
-    else if (ch >= 8)
-    {
-        register_data = (((unsigned short)(ch & 0x0007) << 12) & 0x7000) | (dac_data & 0x0fff);
-        chipSelect2(true);
-        transmit16bit(register_data);
-        chipSelect2(false);
-    }
+  if (ch < 8)
+  {
+    register_data = (((unsigned short)ch << 12) & 0x7000) | (dac_data & 0x0fff);
+    chipSelect1(true);
+    transmit16bit(register_data);
+    chipSelect1(false);
+  }
+  else if (ch >= 8)
+  {
+    register_data = (((unsigned short)(ch & 0x0007) << 12) & 0x7000) | (dac_data & 0x0fff);
+    chipSelect2(true);
+    transmit16bit(register_data);
+    chipSelect2(false);
+  }
 }
 // pressure coeff: [0.0, 1.0]
 void setState(unsigned int ch, double pressure_coeff)
 {
-    setDARegister(ch, (unsigned short)(pressure_coeff * resolution));
+  setDARegister(ch, (unsigned short)(pressure_coeff * resolution));
 }
 void init_pin_valves()
 {
-    pinMode(pin_spi_cs1, OUTPUT);
-    pinMode(pin_spi_other, OUTPUT);
-    pinMode(pin_spi_mosi, OUTPUT);
-    pinMode(pin_spi_sclk, OUTPUT);
-    pinMode(pin_spi_cs2, OUTPUT);
+  pinMode(pin_spi_cs1, OUTPUT);
+  pinMode(pin_spi_other, OUTPUT);
+  pinMode(pin_spi_mosi, OUTPUT);
+  pinMode(pin_spi_sclk, OUTPUT);
+  pinMode(pin_spi_cs2, OUTPUT);
 }
 void init_pins()
 {
-    set_SCLK(LOW);
-    set_MOSI(LOW);
-    set_OTHER(LOW);
-    setCS1(HIGH);
-    setCS2(HIGH);
+  set_SCLK(LOW);
+  set_MOSI(LOW);
+  set_OTHER(LOW);
+  setCS1(HIGH);
+  setCS2(HIGH);
 }
 void init_DAConvAD5328(void)
 {
-    set_clock_edge(false); // negative clock (use                                  falling-edge)
+  set_clock_edge(false); // negative clock (use                                  falling-edge)
 
-    // initialize chip 1
+  // initialize chip 1
 
-    chipSelect1(true);
-    transmit16bit(0xa000);
-    chipSelect1(false);
-    chipSelect1(true);
-    transmit16bit(0x8003);
-    chipSelect1(false);
-    chipSelect2(true);
-    transmit16bit(0xa000);
-    chipSelect2(false);
-    chipSelect2(true);
-    transmit16bit(0x8003);
-    chipSelect2(false);
+  chipSelect1(true);
+  transmit16bit(0xa000);
+  chipSelect1(false);
+  chipSelect1(true);
+  transmit16bit(0x8003);
+  chipSelect1(false);
+  chipSelect2(true);
+  transmit16bit(0xa000);
+  chipSelect2(false);
+  chipSelect2(true);
+  transmit16bit(0x8003);
+  chipSelect2(false);
 }
 class SerialReader
 {
 public:
-    explicit constexpr SerialReader() {}
-    int readInt() const
+  explicit constexpr SerialReader() {}
+  int readInt() const
+  {
+    char buf[40] = {0};
+    wait_();
+    int ret = 0;
+    int size = min(40, Serial.available());
+    for (int i = 0; i < size; ++i)
     {
-        char buf[40] = {0};
-        wait_();
-        int ret = 0;
-        int size = min(40, Serial.available());
-        for (int i = 0; i < size; ++i)
-        {
-            buf[i] = (char)Serial.read();
-        }
-        int now = 0;
-        char c = buf[now];
-        while ((c < '0' || '9' < c) && c != '-')
-        {
-            c = buf[++now];
-        }
-        const bool f = (c == '-') && (c = buf[++now]);
-        while (now + 1 < size)
-        {
-            ret = 10 * ret + c - '0';
-            c = buf[++now];
-        }
-        return f ? -ret : ret;
+      buf[i] = (char)Serial.read();
     }
+    int now = 0;
+    char c = buf[now];
+    while ((c < '0' || '9' < c) && c != '-')
+    {
+      c = buf[++now];
+    }
+    const bool f = (c == '-') && (c = buf[++now]);
+    while (now + 1 < size)
+    {
+      ret = 10 * ret + c - '0';
+      c = buf[++now];
+    }
+    return f ? -ret : ret;
+  }
 
-    float readFloat() const
+  float readFloat() const
+  {
+    char buf[40] = {0};
+    wait_();
+    int size = min(40, Serial.available());
+    for (int i = 0; i < size; ++i)
     {
-        char buf[40] = {0};
-        wait_();
-        int size = min(40, Serial.available());
-        for (int i = 0; i < size; ++i)
-        {
-            buf[i] = (char)Serial.read();
-        }
-        int dot_idx = size - 1;
-        for (int i = 0; i < size; ++i)
-        {
-            if (buf[i] == '.')
-            {
-                dot_idx = i;
-                break;
-            }
-        }
-        float ret = 0;
-        float e = pow(10, dot_idx - 1);
-        int now = 0;
-        char c = buf[now];
-        const bool f = (buf[now] == '-') && (c = buf[++now], e /= 10);
-        while (now + 1 < size)
-        {
-            if (c != '.')
-            {
-                ret += (c - '0') * e;
-                e /= 10;
-            }
-            c = buf[++now];
-        }
-        return f ? -ret : ret;
+      buf[i] = (char)Serial.read();
     }
+    int dot_idx = size - 1;
+    for (int i = 0; i < size; ++i)
+    {
+      if (buf[i] == '.')
+      {
+        dot_idx = i;
+        break;
+      }
+    }
+    float ret = 0;
+    float e = pow(10, dot_idx - 1);
+    int now = 0;
+    char c = buf[now];
+    const bool f = (buf[now] == '-') && (c = buf[++now], e /= 10);
+    while (now + 1 < size)
+    {
+      if (c != '.')
+      {
+        ret += (c - '0') * e;
+        e /= 10;
+      }
+      c = buf[++now];
+    }
+    return f ? -ret : ret;
+  }
 
 private:
-    void wait_() const
+  void wait_() const
+  {
+    while (Serial.available() == 0)
     {
-        while (Serial.available() == 0)
-        {
-            ;
-        }
-        delay(50);
+      ;
     }
+    delay(50);
+  }
 };
 constexpr SerialReader Reader;
 
 void setup()
 {
-    Serial.begin(115200);
-    init_pin_valves();
-    init_pins();
-    // init()
-    init_DAConvAD5328();
-    int i;
-    for (i = 0; i < NUM_OF_CHANNELS; i++)
-    {
-        setState(i, 0.0);
-        delay(100);
-    }
+  Serial.begin(115200);
+  init_pin_valves();
+  init_pins();
+  // init()
+  init_DAConvAD5328();
+  int i;
+  for (i = 0; i < NUM_OF_CHANNELS; i++)
+  {
+    setState(i, 0.0);
+    delay(100);
+  }
 }
 
-void loop()
-{
-    for (int cycle = 0; cycle < 5; ++cycle) // Repeat 5 times
-    {
-        setState(0, 1.0); // Turn on the air
-        delay(5000);      // Wait for 5 seconds (5000 milliseconds)
+void loop() {
 
-        setState(0, 0.0); // Turn off the air
-        delay(3000);      // Wait for 3 seconds (3000 milliseconds)
+  double p=0;
+  int i;
+  int num;
+  if(Serial.available()>0){
+    const float inkey = Reader.readFloat();
+    Serial.println(inkey);
+    if(0<=inkey&&inkey<1){
+      num=0;
+      p=inkey-num;
+      setState(0,p);
+      setState(1,0);
     }
+    else if(1<=inkey&&inkey<2){
+      num=1;
+      p=inkey-num;
+      setState(1,p);
+      setState(0,0);
+    }
+    else{
+      for (i = 0; i < NUM_OF_CHANNELS; i++) {    
+		    setState(i, 0); 
+      }
+    }
+    delay(50);
+  }
 }
-
